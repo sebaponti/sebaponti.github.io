@@ -21,6 +21,7 @@
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
     integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
     crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@metamask/detect-provider/dist/detect-provider.min.js"></script>
 
   <!--
       . .-.. / -.. . ... .- .-. .-. --- .-.. .-.. .- -.. --- .-. / -.-. --- -.. .. ..-. .. -.-. --- / . .-.. / ... -- .- .-. - / -.-. --- -. - .-. .- -.-. - / -.-. --- -. / ... --- .-.. .. -.. .. - -.-- / -.-- / ..- - .. .-.. .. --.. --- / . .-.. / - .. .--. --- / -.. . / ...- .- .-. .. .- -... .-.. . / .-..-. ..- .. -. - .---- -.... .-..-. / .--. .- .-. .- / --. ..- .- .-. -.. .- .-. / . .-.. / -.-. --- -. - . --- / -.. . / ..- ... ..- .- .-. .. --- ... --..-- / .--. . .-. --- / -.. . ... .- ..-. --- .-. - ..- -. .- -.. .- -- . -. - . / ... . / --- .-.. ...- .. -.. --- / -.. . / ..- ... .- .-. / .-..-. ... .- ..-. . -- .- - .... .-..-. .-.-.-
@@ -41,7 +42,7 @@
 
     <img src="susana.jpg" alt="susana" />
     <main role="main" class="inner cover">
-      <h1 class="cover-heading">El juego del millón</h1>
+      <h1 class="cover-heading">El juego del millón <strong>x6</strong></h1>
       <p class="lead">Si sos el usuario nro 100 podes ganar 1 BTC 🤑</p>
 
       <div>
@@ -72,7 +73,8 @@
           <div class="modal-body">
             <button class="btn btn-link" type="button" disabled id="loading">
               <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-              Espera mientras la transacción se confirma, esto puede tardar unos segundos... no cierres ni recargues la ventana.
+              Espera mientras la transacción se confirma, esto puede tardar unos segundos... no cierres ni recargues la
+              ventana.
             </button>
             <div id="alert" class="alert alert-primary" role="alert">
               <p></p>
@@ -88,7 +90,7 @@
 
   <script type="text/javascript">
     const abi = [{ "anonymous": false, "inputs": [{ "indexed": false, "internalType": "string", "name": "result", "type": "string" }, { "indexed": false, "internalType": "uint16", "name": "user", "type": "uint16" }], "name": "newUserResponse", "type": "event" }, { "constant": true, "inputs": [], "name": "userCounter", "outputs": [{ "internalType": "uint16", "name": "", "type": "uint16" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "internalType": "uint16", "name": "_number", "type": "uint16" }], "name": "newUser", "outputs": [{ "internalType": "string", "name": "", "type": "string" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }];
-    const contractAddress = '0x39B3aFac4840AECce30093f9001Cf13215458340';
+    const contractAddress = '0xe61ea1029402BA0Cce11e52506e6A1fdc05B7817';
     let contract = null;
     let account;
 
@@ -96,34 +98,12 @@
     window.addEventListener('load', async () => {
       $("#button").hide();
       // Modern dapp browsers...
-      if (window.ethereum) {
-        window.web3 = new Web3(ethereum);
-        try {
-          $("#status").hide();
-          await ethereum.enable();
-          initializeContract();
-        } catch (error) {
-          $("#status").show();
-          $('#status').html('Para poder continuar tenes que aceptar la conección con Metamask. Recargá la página y apreta el boton conectar.')
-        }
-      }
-      // Legacy dapp browsers...
-      else if (window.web3) {
-        window.web3 = new Web3(web3.currentProvider);
-        $("#status").hide();
-        initializeContract();
-      }
-      else {
-        $("#status").show();
-        $('#status').html('Para interactuar con esta página debes tener instalada la extension Metamask, seguí las instrucciones.')
-      }
+      await asd()
     });
 
     function initializeContract() {
       // Check network
-      web3.currentProvider.publicConfigStore.on('update', function (res) {
-        if (res.networkVersion !== "5") alert('Para continuar tenes que seleccionar la red Goerli en Metamask');
-      });
+      $("#status").hide();
       $("#button").show();
       contract = new window.web3.eth.Contract(abi, contractAddress);
       // Accounts
@@ -139,6 +119,81 @@
         account = accounts[0];
         window.web3.eth.defaultAccount = account;
       });
+    }
+
+    function asd() {
+      return new Promise(function (resolve, reject) {
+        detectEthereumProvider()
+          .then(provider => {
+            if (provider) {
+              if (window.ethereum) {
+                window.web3 = new Web3(ethereum);
+              } else {
+                window.web3 = new Web3(web3.currentProvider);
+              }
+
+              window.ethereum.on("chainChanged", () => {
+                window.location.reload();
+              });
+
+              window.ethereum.on("accountsChanged", () => {
+                window.location.reload();
+              });
+
+              resolve({
+                injectedWeb3: window.ethereum.isConnected()
+              });
+            } else {
+              $("#status").show();
+              $('#status').html('Para interactuar con esta página debes tener instalada la extension Metamask, seguí las instrucciones.')
+              reject(new Error("Unable to connect to Metamask"));
+            }
+          })
+          .catch(err => {
+            reject("ERROR in get provider:" + err);
+          });
+      })
+        .then(result => {
+          return new Promise(function (resolve, reject) {
+            window.ethereum
+              .request({ method: "eth_accounts" })
+              .then(currentAccount => {
+                if (currentAccount[0]) {
+                  result = Object.assign({}, result, { coinbase: currentAccount[0] });
+                  resolve(result);
+                } else {
+                  $("#status").show();
+                  $('#status').html('Para poder continuar tenes que aceptar la conección con Metamask. Recargá la página y apreta el boton conectar.')
+                  reject(new Error("Unable to get coinbase"));
+                }
+              })
+              .catch(err => {
+                reject("ERROR in eth_accounts:" + err);
+              });
+          });
+        })
+        .then(result => {
+          return new Promise(function (resolve, reject) {
+            window.ethereum
+              .request({ method: "eth_chainId" })
+              .then(chainId => {
+                result = Object.assign({}, result, {
+                  networkId: chainId
+                });
+                if (chainId == "0x5") {
+                  initializeContract();
+                  resolve(result);
+                } else {
+                  $("#status").show();
+                  $('#status').html('Para continuar tenes que seleccionar la red Goerli en Metamask.');
+                  reject(new Error("Wrong network"));
+                }
+              })
+              .catch(err => {
+                reject("ERROR in eth_chainId:" + err);
+              });
+          });
+        });
     }
 
     //Smart contract function
