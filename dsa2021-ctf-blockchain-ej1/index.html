@@ -139,6 +139,7 @@
               window.ethereum.on("accountsChanged", () => {
                 window.location.reload();
               });
+              window.ethereum.isConnected();
 
               resolve({
                 injectedWeb3: window.ethereum.isConnected()
@@ -155,9 +156,25 @@
       })
         .then(result => {
           return new Promise(function (resolve, reject) {
+            $("#status").hide();
+            window.ethereum
+              .request({ method: "eth_requestAccounts" })
+              .then(currentAccount => {
+                resolve(result);
+              })
+              .catch(err => {
+                $("#status").show();
+                $('#status').html('Para poder continuar tenes que aceptar la conección con Metamask. Recargá la página y apreta el boton conectar.')
+                reject("ERROR in eth_requestAccounts:" + err);
+              });
+          });
+        })
+        .then(result => {
+          return new Promise(function (resolve, reject) {
             window.ethereum
               .request({ method: "eth_accounts" })
               .then(currentAccount => {
+                console.log(currentAccount[0])
                 if (currentAccount[0]) {
                   result = Object.assign({}, result, { coinbase: currentAccount[0] });
                   resolve(result);
